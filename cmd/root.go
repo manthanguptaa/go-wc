@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +15,7 @@ var rootCmd = &cobra.Command{
 	Use:  "go-wc [filename]",
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		var numberOfBytes, numberOfLines, numberOfWords int
+		var numberOfBytes, numberOfLines, numberOfWords, numberOfChars int
 		filename := args[0]
 		file, err := os.Open(filename)
 		if err != nil {
@@ -27,6 +28,7 @@ var rootCmd = &cobra.Command{
 		getBytesToggle, _ := cmd.Flags().GetBool("getBytesToggle")
 		getLinesToggle, _ := cmd.Flags().GetBool("getLinesToggle")
 		getWordsToggle, _ := cmd.Flags().GetBool("getWordsToggle")
+		getCharsToggle, _ := cmd.Flags().GetBool("getCharsToggle")
 
 		for scanner.Scan() {
 			if getLinesToggle {
@@ -41,6 +43,10 @@ var rootCmd = &cobra.Command{
 				words := strings.Fields(line)
 				numberOfWords += len(words)
 			}
+			if getCharsToggle {
+				line := scanner.Text()
+				numberOfChars += utf8.RuneCountInString(line) + 2 // +2 is to account for newline bytes
+			}
 		}
 		if getBytesToggle {
 			fmt.Fprintf(os.Stdout, "%6d %s\n", numberOfBytes, filename)
@@ -48,6 +54,8 @@ var rootCmd = &cobra.Command{
 			fmt.Fprintf(os.Stdout, "%6d %s\n", numberOfLines, filename)
 		} else if getWordsToggle {
 			fmt.Fprintf(os.Stdout, "%6d %s\n", numberOfWords, filename)
+		} else if getCharsToggle {
+			fmt.Fprintf(os.Stdout, "%6d %s\n", numberOfChars, filename)
 		}
 	},
 }
@@ -63,6 +71,7 @@ func init() {
 	rootCmd.Flags().BoolP("getBytesToggle", "c", false, "Outputs the numbers of bytes in the file")
 	rootCmd.Flags().BoolP("getLinesToggle", "l", false, "Outputs the numbers of lines in the file")
 	rootCmd.Flags().BoolP("getWordsToggle", "w", false, "Outputs the numbers of words in the file")
+	rootCmd.Flags().BoolP("getCharsToggle", "m", false, "Outputs the numbers of characters in the file")
 }
 
 var RootCmd = rootCmd
