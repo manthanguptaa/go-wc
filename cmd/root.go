@@ -11,10 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func FormatOutput(getBytesToggle, getLinesToggle, getWordsToggle, getCharsToggle int) {
-
-}
-
 var rootCmd = &cobra.Command{
 	Use:  "go-wc [flags] [filename]",
 	Args: cobra.MaximumNArgs(1),
@@ -44,7 +40,7 @@ var rootCmd = &cobra.Command{
 		getCharsToggle, _ := cmd.Flags().GetBool("m")
 
 		// default option when no flag is given in the command
-		if !(getBytesToggle && getLinesToggle && getWordsToggle && getCharsToggle) {
+		if !getBytesToggle && !getLinesToggle && !getWordsToggle && !getCharsToggle {
 			getBytesToggle = true
 			getLinesToggle = true
 			getWordsToggle = true
