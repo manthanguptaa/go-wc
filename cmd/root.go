@@ -11,15 +11,46 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const newLineAdjustment int = 2
+
+type Counts struct {
+	lines int
+	words int
+	bytes int
+	chars int
+}
+
+func countBytesLinesWordsChars(scanner *bufio.Scanner, countLines, countBytes,
+	countWords, countChars bool) Counts {
+	var counts Counts
+	for scanner.Scan() {
+		line := scanner.Text()
+		arrayOfBytes := scanner.Bytes()
+		if countLines {
+			counts.lines++
+		}
+		if countBytes {
+			// Potential optimization: count bytes directly from arrayOfBytes
+			counts.bytes += len(arrayOfBytes) + newLineAdjustment
+		}
+		if countWords {
+			words := strings.Fields(line)
+			counts.words += len(words)
+		}
+		if countChars {
+			counts.chars += utf8.RuneCountInString(line) + newLineAdjustment
+		}
+	}
+	return counts
+}
+
 var rootCmd = &cobra.Command{
 	Use:  "go-wc [flags] [filename]",
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		var numberOfBytes, numberOfLines, numberOfWords, numberOfChars int
 		var filename string
 		var input io.Reader
 
-		// checking if there is an input file or pipe input
 		if len(args) == 0 {
 			input = os.Stdin
 		} else {
@@ -46,33 +77,24 @@ var rootCmd = &cobra.Command{
 			getWordsToggle = true
 		}
 
-		for scanner.Scan() {
-			line := scanner.Text()
-			arrayOfBytes := scanner.Bytes()
-			if getLinesToggle {
-				numberOfLines++
-			}
-			if getBytesToggle {
-				numberOfBytes += len(arrayOfBytes) + 2 // +2 is to account for newline bytes
-			}
-			if getWordsToggle {
-				words := strings.Fields(line)
-				numberOfWords += len(words)
-			}
-			if getCharsToggle {
-				numberOfChars += utf8.RuneCountInString(line) + 2 // +2 is to account for newline chars
-			}
+		var counts Counts = countBytesLinesWordsChars(scanner, getLinesToggle, getBytesToggle, getWordsToggle, getCharsToggle)
+
+		// if there is an issue in the middle of reading the file, handling the error
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "something bad happened with the file %v", err)
+			os.Exit(-1)
 		}
+
 		if getBytesToggle && getLinesToggle && getWordsToggle {
-			fmt.Fprintf(os.Stdout, "%9d %9d %9d %s\n", numberOfLines, numberOfWords, numberOfBytes, filename)
+			fmt.Fprintf(os.Stdout, "%9d %9d %9d %s\n", counts.lines, counts.words, counts.bytes, filename)
 		} else if getBytesToggle {
-			fmt.Fprintf(os.Stdout, "%9d %s\n", numberOfBytes, filename)
+			fmt.Fprintf(os.Stdout, "%9d %s\n", counts.bytes, filename)
 		} else if getLinesToggle {
-			fmt.Fprintf(os.Stdout, "%9d %s\n", numberOfLines, filename)
+			fmt.Fprintf(os.Stdout, "%9d %s\n", counts.lines, filename)
 		} else if getWordsToggle {
-			fmt.Fprintf(os.Stdout, "%9d %s\n", numberOfWords, filename)
+			fmt.Fprintf(os.Stdout, "%9d %s\n", counts.words, filename)
 		} else if getCharsToggle {
-			fmt.Fprintf(os.Stdout, "%9d %s\n", numberOfChars, filename)
+			fmt.Fprintf(os.Stdout, "%9d %s\n", counts.chars, filename)
 		}
 	},
 }
